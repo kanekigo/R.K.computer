@@ -74,7 +74,7 @@ header.site-header{
   position:sticky; top:0; z-index:50; background:rgba(255,255,255,.92); backdrop-filter:blur(10px);
   border-bottom:1px solid var(--border);
 }
-.header-row{display:flex; align-items:center; gap:28px; padding:16px 0;}
+.header-row{display:flex; align-items:center; gap:28px; padding-top:16px; padding-bottom:16px;}
 @media(max-width:480px){ .header-row{gap:10px;} }
 
 .logo{display:flex; align-items:center; gap:9px; font-size:20px; font-weight:700; color:var(--text); flex-shrink:0;}
@@ -96,7 +96,7 @@ nav.main-nav a:hover, nav.main-nav a.active{color:var(--text);}
 }
 .header-search input{background:none; border:none; outline:none; color:var(--text); font-size:13.5px; width:100%; font-family:'Inter',sans-serif;}
 .header-search svg{width:16px;height:16px; color:var(--muted); flex-shrink:0;}
-.header-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+.header-actions{display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:auto;}
 @media(max-width:480px){ .header-actions{gap:2px;} }
 .head-icon{
   position:relative; width:42px;height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center;
@@ -418,7 +418,7 @@ textarea.f-control{min-height:90px; resize:vertical;}
 
 /* ===== Footer ===== */
 footer.site-footer{background:var(--surface); border-top:1px solid var(--border); margin-top:40px;}
-.footer-top{display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:40px; padding:56px 0 36px;}
+.footer-top{display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:40px; padding-top:56px; padding-bottom:36px;}
 @supports (display:grid){ .footer-top{grid-template-columns:minmax(220px,1.6fr) repeat(3, minmax(120px,1fr));} }
 @media(max-width:800px){ .footer-top{grid-template-columns:1fr 1fr; gap:28px;} }
 @media(max-width:480px){ .footer-top{grid-template-columns:1fr;} .footer-brand p{max-width:100%;} }
@@ -428,9 +428,9 @@ footer.site-footer{background:var(--surface); border-top:1px solid var(--border)
 .footer-col h5{font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:16px;}
 .footer-col a{display:block; font-size:13px; color:var(--text); margin-bottom:11px;}
 .footer-col a:hover{color:var(--primary);}
-.footer-pay{display:flex; gap:8px; flex-wrap:wrap; padding:20px 0; border-top:1px solid var(--border);}
+.footer-pay{display:flex; gap:8px; flex-wrap:wrap; padding-top:20px; padding-bottom:20px; border-top:1px solid var(--border);}
 .pay-chip{background:var(--surface2); border:1px solid var(--border); font-size:11px; font-weight:700; padding:6px 12px; border-radius:8px; color:var(--muted);}
-.footer-bottom{border-top:1px solid var(--border); padding:20px 0; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+.footer-bottom{border-top:1px solid var(--border); padding-top:20px; padding-bottom:20px; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
 
 .crumb-path{font-size:12.5px; color:var(--muted); margin-bottom:24px;}
 .crumb-path a{color:var(--text);}
@@ -746,6 +746,21 @@ footer.site-footer{background:var(--surface); border-top:1px solid var(--border)
 .product-foot .mini-qty button{ width:22px; }
 .product-foot .mini-qty span{ width:20px; }
 .product-foot .add-btn{ flex:1 1 60px; height:38px; padding:0 6px; }
+
+
+/* ===== Multi-select category filter ===== */
+.filter-h4-row{ display:flex; align-items:center; justify-content:space-between; }
+.filter-clear{ font-size:11px; font-weight:700; color:var(--primary); text-transform:none; letter-spacing:0; }
+.cat-check{ margin-bottom:0; cursor:pointer; align-items:center; }
+.cat-check .cat-name{ flex:1; font-size:13px; }
+.cat-check input:checked ~ .cat-name{ color:var(--primary); font-weight:700; }
+
+/* Shop toolbar: keep "Sort by" on one line and don't let the dropdown stretch */
+.shop-toolbar > div{ white-space:nowrap; }
+.shop-toolbar select.f-control{ width:auto; min-width:170px; }
+
+/* Header icon buttons: remove the browser's default button border (the hamburger had a dark outline) */
+.head-icon{ border:0; }
 </style>
 </head>
 <body>
@@ -1399,11 +1414,14 @@ function initSearch(){
 }
 
 // ===== Filtering + sorting (shop page) =====
+// Display order for the shop's category filter (any category not listed here is appended automatically)
+const CATEGORY_ORDER = ['Processors','Graphics Cards','Motherboards','Memory','Storage','Power Supplies','Cases','Cooling','Monitors','Gaming Gear','Accessories','Pre-Built PCs'];
+
 function initFiltering(){
   const grid = document.getElementById('shopGrid');
   const cards = () => document.querySelectorAll('[data-product-id]');
   if(cards().length===0) return;
-  const state = { category:null, maxPrice:Infinity, brand:null, sort:'popularity' };
+  const state = { categories:new Set(), maxPrice:Infinity, brand:null, sort:'popularity' };
   const params = new URLSearchParams(location.search);
   const q = (params.get('q')||'').toLowerCase();
 
@@ -1430,7 +1448,7 @@ function initFiltering(){
     cards().forEach(card=>{
       const cat = card.dataset.category, price = parseFloat(card.dataset.price), brand = card.dataset.brand, name=(card.dataset.name||'').toLowerCase();
       let show = true;
-      if(state.category && cat!==state.category) show=false;
+      if(state.categories.size && !state.categories.has(cat)) show=false;
       if(price > state.maxPrice) show=false;
       if(state.brand && brand!==state.brand) show=false;
       if(q && !name.includes(q)) show=false;
@@ -1441,6 +1459,8 @@ function initFiltering(){
     if(empty) empty.style.display = visible===0 ? 'block':'none';
     const countEl = document.getElementById('resultCount');
     if(countEl) countEl.textContent = visible;
+    const totalEl = document.getElementById('totalCount');
+    if(totalEl) totalEl.textContent = cards().length;
   };
 
   document.getElementById('sortSelect')?.addEventListener('change', (e)=>{
@@ -1449,16 +1469,62 @@ function initFiltering(){
     apply();
   });
 
-  document.querySelectorAll('[data-filter-category]').forEach(el=>{
-    el.addEventListener('click', (e)=>{
-      e.preventDefault();
-      document.querySelectorAll('[data-filter-category]').forEach(x=>x.classList.remove('filter-active'));
-      const val = el.dataset.filterCategory;
-      state.category = val==='all' ? null : val;
-      el.classList.add('filter-active');
-      apply();
+  // ---- Category filter: multi-select checkboxes, generated from the catalog ----
+  const counts = {};
+  CATALOG.forEach(p=>{ counts[p.cat] = (counts[p.cat]||0) + 1; });
+  const ordered = [...CATEGORY_ORDER.filter(c=>counts[c]), ...Object.keys(counts).filter(c=>!CATEGORY_ORDER.includes(c))];
+  const catList = document.getElementById('categoryFilterList');
+  if(catList){
+    catList.innerHTML =
+      `<li><label class="f-check cat-check"><input type="checkbox" id="catAll" checked><span class="cat-name">All Categories</span><span class="filter-count">${CATALOG.length}</span></label></li>` +
+      ordered.map(c=>`<li><label class="f-check cat-check"><input type="checkbox" data-filter-category="${c}"><span class="cat-name">${c}</span><span class="filter-count">${counts[c]}</span></label></li>`).join('');
+  }
+  const catBoxes = ()=> Array.from(document.querySelectorAll('[data-filter-category]'));
+  const catAll = document.getElementById('catAll');
+  const clearCats = document.getElementById('clearCategories');
+
+  const updateHeading = ()=>{
+    const sel = ordered.filter(c=>state.categories.has(c));
+    const titleEl = document.getElementById('shopTitle');
+    const subEl = document.getElementById('shopTitleSub');
+    if(titleEl) titleEl.textContent = sel.length===0 ? 'Shop All Products' : sel.length===1 ? sel[0] : `${sel.length} categories`;
+    if(subEl) subEl.textContent = sel.length===0 ? 'Every product across the catalog.' : sel.length===1 ? `Browsing ${sel[0]}` : sel.join(' · ');
+    if(catAll) catAll.checked = sel.length===0;
+    if(clearCats) clearCats.style.display = sel.length ? '' : 'none';
+  };
+  const syncUrl = ()=>{
+    try{
+      const u = new URL(location.href);
+      if(state.categories.size) u.searchParams.set('cat', ordered.filter(c=>state.categories.has(c)).join(','));
+      else u.searchParams.delete('cat');
+      history.replaceState(null, '', u);
+    }catch(e){ /* e.g. file:// pages can't rewrite their URL; the filter still works */ }
+  };
+  const categoriesChanged = ()=>{ updateHeading(); syncUrl(); apply(); };
+  const clearAllCategories = ()=>{
+    state.categories.clear();
+    catBoxes().forEach(b=> b.checked = false);
+    categoriesChanged();
+  };
+
+  catBoxes().forEach(box=>{
+    box.addEventListener('change', ()=>{
+      if(box.checked) state.categories.add(box.dataset.filterCategory);
+      else state.categories.delete(box.dataset.filterCategory);
+      categoriesChanged();
     });
   });
+  catAll?.addEventListener('change', clearAllCategories);
+  clearCats?.addEventListener('click', e=>{ e.preventDefault(); clearAllCategories(); });
+
+  // Pre-select from ?cat= (one or several, comma-separated), e.g. shop.html?cat=Monitors,Cooling
+  params.getAll('cat').flatMap(v=>v.split(',')).map(s=>s.trim()).filter(c=>counts[c]).forEach(c=>{
+    state.categories.add(c);
+    const box = document.querySelector(`[data-filter-category="${c}"]`);
+    if(box) box.checked = true;
+  });
+  updateHeading();
+
   document.querySelectorAll('[data-filter-price]').forEach(el=>{
     el.addEventListener('input', ()=>{
       state.maxPrice = parseFloat(el.value);
